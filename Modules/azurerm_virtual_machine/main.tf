@@ -2,24 +2,30 @@ resource "azurerm_network_interface" "nic" {
   name                = var.network_interface_name
   location            = var.location
   resource_group_name = var.resource_group_name
+ 
 
   ip_configuration {
-    name                          = var.ip_name
+    name                          = var.ip_configuration_name
     subnet_id                     = data.azurerm_subnet.subnet.id
     private_ip_address_allocation = "Dynamic"
     public_ip_address_id = data.azurerm_public_ip.pip.id
   }
 }
 
+
+
 resource "azurerm_linux_virtual_machine" "VM" {
   name                = var.virtual_machine_name
   resource_group_name = var.resource_group_name
   location            = var.location
   size                = "Standard_F2"
-  admin_username      = data.azurerm_key_vault_secret.secret_username.value
-  admin_password      = data.azurerm_key_vault_secret.secret_password.value
+  # admin_username      = data.azurerm_key_vault_secret.secret_username.value
+  # admin_password      = data.azurerm_key_vault_secret.secret_password.value
+  admin_username      = var.admin_username
+  admin_password      = var.admin_password
+  allow_extension_operations= false
   disable_password_authentication = "false"
-  network_interface_ids = [
+ network_interface_ids = [
     azurerm_network_interface.nic.id
   ]
 
@@ -43,22 +49,3 @@ sudo systemctl start nginx
 EOF
   )
 }
-#   provisioner "remote-exec" {
-#     inline = [
-#       "sudo apt-get update",
-#       "sudo apt-get install -y nginx",
-#       "sudo systemctl start nginx",
-#       "sudo systemctl enable nginx"
-#     ]
-
-#     connection {
-#       type     = "ssh"
-#       user     = data.azurerm_key_vault_secret.secret_username.value
-#       password = data.azurerm_key_vault_secret.secret_password.value
-#       host     = data.azurerm_public_ip.pip.ip_address
-#     }
-#   }
-# }
-
-
-

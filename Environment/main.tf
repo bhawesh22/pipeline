@@ -1,143 +1,106 @@
 module "azurerm_resource_group" {
-  source                  = "../Modules/azurerm_resource_group"
-  resource_group_name     = "bhawesh-rg"
-  resource_group_location = "West US"
+  source              = "../module/azurerm_resource_group"
+  resource_group_name = "soumya-rg"
+  location            = "West Europe"
 }
 
 module "azurerm_virtual_network" {
-  depends_on           = [module.azurerm_resource_group]
-  source               = "../Modules/azurerm_virtual_network"
-  virtual_network_name = "todoapp_vnet"
-  address_space        = ["10.0.0.0/16"]
-  location             = "West US"
-  resource_group_name  = "bhawesh-rg"
+  source                       = "../module/azurerm_virtual_network"
+  azurerm_virtual_network_name = "soumya_vnet"
+  location                     = "West Europe"
+  resource_group_name          = "soumya-rg"
+  address_space                = ["10.0.0.0/16"]
+  depends_on                   = [module.azurerm_resource_group]
 }
 
 module "azurerm_frontend_subnet" {
-  depends_on           = [module.azurerm_virtual_network]
-  source               = "../Modules/azurerm_subnet"
-  subnet_name          = "frontend-subnet"
-  resource_group_name  = "bhawesh-rg"
-  virtual_network_name = "todoapp_vnet"
+  source               = "../module/azurerm_subnet"
+  azurerm_subnet_name  = "soumya-fsubnet"
+  resource_group_name  = "soumya-rg"
+  virtual_network_name = "soumya_vnet"
   address_prefixes     = ["10.0.1.0/24"]
-
+  depends_on           = [module.azurerm_virtual_network,module.azurerm_resource_group]
 }
+
 
 module "azurerm_backend_subnet" {
-  depends_on           = [module.azurerm_virtual_network]
-  source               = "../Modules/azurerm_subnet"
-  subnet_name          = "backend-subnet"
-  resource_group_name  = "bhawesh-rg"
-  virtual_network_name = "todoapp_vnet"
+  source               = "../module/azurerm_subnet"
+  azurerm_subnet_name  = "soumya-bsubnet"
+  resource_group_name  = "soumya-rg"
+  virtual_network_name = "soumya_vnet"
   address_prefixes     = ["10.0.2.0/24"]
+  depends_on           = [module.azurerm_virtual_network,module.azurerm_resource_group]
 }
-
 module "frontend_public_ip" {
+  source              = "../module/azurerm_public_ip"
+  public_ip_name      = "soumya_pip"
+  resource_group_name = "soumya-rg"
+  location    = "West Europe"
   depends_on          = [module.azurerm_virtual_network]
-  source              = "../Modules/azurerm_public_ip"
-  pip_name            = "frontend_pip"
-  resource_group_name = "bhawesh-rg"
-  location            = "West US"
 }
 
 module "backend_public_ip" {
-  depends_on          = [module.azurerm_virtual_network]
-  source              = "../Modules/azurerm_public_ip"
-  pip_name            = "backend_pip"
-  resource_group_name = "bhawesh-rg"
-  location            = "West US"
+  source              = "../module/azurerm_public_ip"
+  public_ip_name      = "soumya-pip-backend"
+  resource_group_name = "soumya-rg"
+  location            = "West Europe"
+    depends_on          = [module.azurerm_virtual_network]
+}
+module "azurerm_virtual_machine_frontend" {
+  depends_on = [module.azurerm_frontend_subnet,module.frontend_public_ip,module.azurerm_virtual_network,module.azurerm_resource_group]
+  source                   = "../module/azurerm_virtual_machine"
+  virtual_machine_name     = "todoFrontendVM"
+  location                 = "West Europe"
+  resource_group_name      = "soumya-rg"
+  subnet_name              = "soumya-fsubnet"
+  virtual_network_name     = "soumya_vnet"
+  public_ip_name           = "soumya_pip"         
+  network_interface_name   = "frontend-nic"
+  ip_configuration_name    = "frontend_ip"
+  admin_username           = "adminuser"
+  admin_password           = "Cricket@12342024"
+  image_publisher          = "Canonical"
+  image_offer              = "ubuntu-24_04-lts"
+  image_sku                = "ubuntu-pro-gen1"
+  image_version            = "latest"
+
 }
 
-module "frontend_vm" {
-  depends_on             = [module.azurerm_frontend_subnet, module.frontend_public_ip, module.key_vault, module.vm_username_secret, module.vm_password_secret, module.azurerm_resource_group]
-  source                 = "../Modules/azurerm_virtual_machine"
-  network_interface_name = "frontend_nic"
-  location               = "West US"
-  resource_group_name    = "bhawesh-rg"
-  ip_name                = "frontend_ip"
-  virtual_machine_name   = "todoFrontendVM"
-  subnet_name            = "frontend-subnet"
-  virtual_network_name   = "todoapp_vnet"
-  public_ip_name         = "frontend_pip"
-  secret_username_name   = "vm-username1"
-  secret_password_name   = "vm-password1"
-  image_publisher        = "Canonical"
-  image_offer            = "ubuntu-24_04-lts"
-  image_sku              = "ubuntu-pro-gen1"
-  image_version          = "latest"
-  key_vault_name         = "bhaweshKV"
+
+module "azurerm_virtual_machine_backend" {
+  depends_on               = [module.azurerm_backend_subnet,module.backend_public_ip,module.azurerm_virtual_network,module.azurerm_resource_group]
+  source                   = "../module/azurerm_virtual_machine"
+  virtual_machine_name     = "todobackedndVM"
+  location                 = "West Europe"
+  resource_group_name      = "soumya-rg"
+  subnet_name              = "soumya-bsubnet"
+  virtual_network_name     = "soumya_vnet"
+  public_ip_name           = "soumya-pip-backend"
+  network_interface_name   = "backend-nic"
+  ip_configuration_name    = "internal"
+  admin_username           = "adminuser"
+  admin_password           = "Cricket@12342024"
+  image_publisher          = "Canonical"
+  image_offer              = "0001-com-ubuntu-server-focal"
+  image_sku                = "20_04-lts"
+  image_version            = "latest"
 
 }
 
-
-
-module "backend_vm" {
-  depends_on = [module.azurerm_backend_subnet, module.backend_public_ip, module.key_vault, module.vm_username_secret, module.vm_password_secret]
-  source     = "../Modules/azurerm_virtual_machine"
-
-  network_interface_name = "backend_nic"
-  location               = "West US"
-  resource_group_name    = "bhawesh-rg"
-  ip_name                = "backend_ip"
-  virtual_machine_name   = "todoBackendVM"
-  subnet_name            = "backend-subnet"
-  virtual_network_name   = "todoapp_vnet"
-  public_ip_name         = "backend_pip"
-  secret_username_name   = "vm-username1"
-  secret_password_name   = "vm-password1"
-  image_publisher        = "Canonical"
-  image_offer            = "0001-com-ubuntu-server-focal"
-  image_sku              = "20_04-lts"
-  image_version          = "latest"
-  key_vault_name         = "bhaweshKV"
+module "azurerm_sql_server" {
+  source                   = "../module/azurerm_sql_server"
+  mssql_server_name        = "soumya-sql-server"
+  resource_group_name      = "soumya-rg"
+  resource_group_location  = "West Europe"
+  admin_username           = "sqladmin"
+  admin_password           = "SqlAdmin@1234"
+  depends_on               = [module.azurerm_resource_group]
 }
-
-module "sql_server" {
-  depends_on           = [module.azurerm_resource_group, module.key_vault, module.vm_username_secret, module.vm_password_secret]
-  source               = "../Modules/azurerm_sql_server"
-  sql_server_name      = "bhaweshsqlserver"
-  location             = "West US"
-  resource_group_name  = "bhawesh-rg"
-  key_vault_name       = "bhaweshKV"
-  secret_username_name = "vm-username1"
-  secret_password_name = "vm-password1"
-}
-
 module "sql_database" {
-  depends_on          = [module.sql_server]
-  source              = "../Modules/azurerm_sql_database"
-  database_name       = "bhaweshdb"
-  sql_server_name     = "bhaweshsqlserver"
-  resource_group_name = "bhawesh-rg"
+  depends_on          = [module.azurerm_sql_server]
+  source              = "../module/azurerm_sql_database"
+  sql_database_name       = "soumyadb"
+  sql_server_name     = "soumya-sql-server"
+  resource_group_name = "soumya-rg"
 
 }
-
-
-module "key_vault" {
-  depends_on = [module.azurerm_resource_group]
-
-  source              = "../Modules/azurerm_key_vault"
-  key_vault_name      = "bhaweshKV"
-  location            = "West US"
-  resource_group_name = "bhawesh-rg"
-
-}
-
-module "vm_username_secret" {
-  depends_on          = [module.key_vault]
-  source              = "../Modules/azurerm_key_vault_secret"
-  key_vault_name      = "bhaweshKV"
-  secret_name         = "vm-username1"
-  secret_value        = "adminuser"
-  resource_group_name = "bhawesh-rg"
-
-}
-module "vm_password_secret" {
-  depends_on          = [module.key_vault, module.vm_username_secret]
-  source              = "../Modules/azurerm_key_vault_secret"
-  key_vault_name      = "bhaweshKV"
-  secret_name         = "vm-password1"
-  secret_value        = "Cricket@2024"
-  resource_group_name = "bhawesh-rg"
-}
-
