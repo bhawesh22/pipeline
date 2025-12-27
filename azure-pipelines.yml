@@ -1,0 +1,20 @@
+
+trigger: none
+
+
+pool: bhaweshpool
+  
+
+steps:
+
+- task: TerraformInstaller@1
+  inputs:
+    terraformVersion: 'latest'
+- task: TerraformTask@5
+  inputs:
+    provider: 'azurerm'
+    command: 'init'
+    backendServiceArm: 'bhaweshscp'
+    backendAzureRmStorageAccountName: 'bhaweshmishra'
+    backendAzureRmContainerName: 'bhaweshcontainer'
+    backendAzureRmKey: 'dev.tfstate'
